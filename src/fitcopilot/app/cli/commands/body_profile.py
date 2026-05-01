@@ -4,6 +4,8 @@ from uuid import UUID
 
 import typer
 
+from fitcopilot.app.bootstrap.container import build_container
+from fitcopilot.infrastructure.db.session import new_session
 from fitcopilot.modules.body_profile.application.dto import CreateBodyProfileInput
 from fitcopilot.modules.body_profile.application.use_cases.create_body_profile import (
     CreateBodyProfile,
@@ -13,8 +15,8 @@ from fitcopilot.modules.body_profile.domain.value_objects import (
     GoalType,
     Sex,
 )
-from fitcopilot.modules.body_profile.infrastructure.repositories.in_memory import (
-    InMemoryBodyProfileRepository,
+from fitcopilot.modules.body_profile.infrastructure.sqlalchemy_repository import (
+    SqlAlchemyBodyProfileRepository,
 )
 
 app = typer.Typer(help="Body profile commands")
@@ -31,21 +33,27 @@ def create_body_profile(
     goal: Annotated[GoalType, typer.Option("--goal")],
     measured_at: Annotated[str, typer.Option("--measured-at")],
 ) -> None:
-    repository = InMemoryBodyProfileRepository()
-    use_case = CreateBodyProfile(repository)
+    build_container()
+    session = new_session()
 
-    result = use_case.execute(
-        CreateBodyProfileInput(
-            user_id=user_id,
-            weight_kg=weight_kg,
-            height_cm=height_cm,
-            age_years=age_years,
-            sex=sex,
-            activity_level=activity_level,
-            goal=goal,
-            measured_at=datetime.fromisoformat(measured_at),
+    try:
+        repository = SqlAlchemyBodyProfileRepository(session)
+        use_case = CreateBodyProfile(repository)
+
+        result = use_case.execute(
+            CreateBodyProfileInput(
+                user_id=user_id,
+                weight_kg=weight_kg,
+                height_cm=height_cm,
+                age_years=age_years,
+                sex=sex,
+                activity_level=activity_level,
+                goal=goal,
+                measured_at=datetime.fromisoformat(measured_at),
+            )
         )
-    )
 
-    typer.echo("Body profile created:")
-    typer.echo(result.model_dump_json(indent=2))
+        typer.echo("Body profile created:")
+        typer.echo(result.model_dump_json(indent=2))
+    finally:
+        session.close()
