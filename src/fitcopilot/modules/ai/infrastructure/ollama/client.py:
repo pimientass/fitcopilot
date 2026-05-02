@@ -1,0 +1,11 @@
+from ollama import chat
+
+
+def ollama_chat(*, model: str, prompt: str, schema: dict) -> str:
+    response = chat(
+        model=model,
+        messages=[{"role": "user", "content": prompt}],
+        format=schema,
+        options={"temperature": 0},
+    )
+    return response.message.content
