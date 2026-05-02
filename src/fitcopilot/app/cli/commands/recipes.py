@@ -4,12 +4,16 @@ import typer
 
 from fitcopilot.app.bootstrap.container import build_container
 from fitcopilot.infrastructure.db.session import new_session
+from fitcopilot.modules.catalog.infrastructure.sqlalchemy_repository import (
+    SqlAlchemyProductRepository,
+)
 from fitcopilot.modules.recipes.application.dto import (
     CreateRecipeInput,
     RecipeIngredientInput,
     RecipeStepInput,
 )
 from fitcopilot.modules.recipes.application.use_cases.create_recipe import CreateRecipe
+from fitcopilot.modules.recipes.domain.services import RecipeNutritionCalculator
 from fitcopilot.modules.recipes.infrastructure.sqlalchemy_repository import (
     SqlAlchemyRecipeRepository,
 )
@@ -26,8 +30,10 @@ def add_recipe(
     session = new_session()
 
     try:
-        repository = SqlAlchemyRecipeRepository(session)
-        use_case = CreateRecipe(repository)
+        recipe_repository = SqlAlchemyRecipeRepository(session)
+        product_repository = SqlAlchemyProductRepository(session)
+        nutrition_calculator = RecipeNutritionCalculator(product_repository)
+        use_case = CreateRecipe(recipe_repository, nutrition_calculator)
 
         result = use_case.execute(
             CreateRecipeInput(
